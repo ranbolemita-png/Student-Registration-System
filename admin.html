@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MTU | Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <!-- Sidebar & Header -->
+    <div class="min-h-screen flex flex-col">
+        <header class="bg-green-800 text-white shadow-lg p-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-university text-2xl"></i>
+                <h1 class="text-xl font-bold uppercase tracking-wider">MTU Admin Panel</h1>
+            </div>
+            <a href="MTU.html" class="bg-white text-green-800 px-4 py-2 rounded-lg font-bold hover:bg-gray-200 transition">
+                <i class="fas fa-plus mr-2"></i>NEW REGISTER
+                <div class="flex gap-2">
+    <button onclick="window.print()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 transition">
+        <i class="fas fa-print mr-2"></i>PRINT
+    </button>
+   
+    </a>
+</div>
+            </a>
+        </header>
+
+        <main class="p-6 flex-grow">
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-2xl shadow-md border-l-8 border-green-600">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-gray-500 font-bold uppercase text-xs">TOTAL STUDENTS</p>
+                            <h2 id="totalCount" class="text-3xl font-black text-gray-800">0</h2>
+                        </div>
+                        <i class="fas fa-users text-4xl text-green-200"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table Section -->
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+                <div class="p-6 border-b border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <h3 class="text-lg font-bold text-gray-700">REGISTERD STUDENTS</h3>
+                    <div class="relative w-full md:w-96">
+                        <i class="fas fa-search absolute left-4 top-4 text-gray-400"></i>
+                        <input type="text" id="searchInput" onkeyup="filterStudents()" 
+                            placeholder="SEARCH BY ID OR NAME..." 
+                            class="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-500 outline-none transition-all">
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-600 uppercase text-xs font-bold">
+                                <th class="px-6 py-4">STUDENT</th>
+                                <th class="px-6 py-4">ID NUMBER (ID)</th>
+                                <th class="px-6 py-4">DEPARTMENT</th>
+                                <th class="px-6 py-4">REGISTRATION DATE</th>
+                                <th class="px-6 py-4 text-center">ACT</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminTableBody" class="divide-y divide-gray-100">
+                            <!-- Data will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let allStudents = [];
+
+   async function fetchStudents() {
+    try {
+        const response = await fetch('http://localhost:3000/students');
+        let data = await response.json();
+        
+        // እዚህም ጋር በድጋሚ Sort እናድርገው (ለጥንቃቄ)
+        data.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+        
+        allStudents = data;
+        document.getElementById('totalCount').innerText = allStudents.length;
+        renderTable(allStudents);
+    } catch (error) {
+        console.error("Error fetching data:", error);
+    }
+}
+
+        function renderTable(data) {
+            const tbody = document.getElementById('adminTableBody');
+            if (data.length === 0) {
+                return;
+            }
+
+            tbody.innerHTML = data.map(s => `
+                <tr class="hover:bg-green-50/50 transition-colors group">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            <img src="${s.photoUrl || 'https://via.placeholder.com/40'}" class="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm">
+                            <span class="font-bold text-gray-800">${s.name}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-gray-600 font-mono text-sm">${s.id}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">${s.dept}</span>
+                    </td>
+                    <td class="px-6 py-4 text-gray-500 text-sm">${s.date || '---'}</td>
+                    <td class="px-6 py-4 text-center">
+                        <button onclick="deleteStudent('${s.id}')" class="text-red-400 hover:text-red-600 p-2 transition">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function filterStudents() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = allStudents.filter(s => 
+                s.name.toLowerCase().includes(query) || s.id.toLowerCase().includes(query)
+            );
+            renderTable(filtered);
+        }
+
+        async function deleteStudent(id) {
+            if (confirm(`STUDENT WITH ID NO_ ${id} DELETED PERMANENTLY?`)) {
+                try {
+                    const res = await fetch(`http://localhost:3000/students/${id}`, { method: 'DELETE' });
+                    if(res.ok) fetchStudents();
+                } catch (err) { alert("CAN'T DELET!"); }
+            }
+        }
+
+        fetchStudents();
+    </script>
+</body>
+</html>
